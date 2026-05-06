@@ -7,7 +7,7 @@ from resume_parser import extract_text_from_pdf, extract_text_from_docx
 from analyzer import extract_skills
 from report_generator import generate_report
 
-app = Flask(__name__)
+app = Flask(__name__, template_folder="../templates")
 
 # =========================
 # 📁 CONFIG
@@ -166,7 +166,7 @@ def download_report():
 
         generate_report(file_path, data)
 
-        return send_file(file_path, as_attachment=True)
+        return send_file(file_path, as_attachment=True, download_name="report.pdf")
 
     except Exception as e:
         print("❌ REPORT ERROR:", e)
