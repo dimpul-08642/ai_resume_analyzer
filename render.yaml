@@ -1,0 +1,8 @@
+services:
+  - type: web
+    name: ai-resume-analyzer
+    env: python
+    plan: free
+    branch: main
+    autoDeploy: true
+    startCommand: cd backend && gunicorn app:app
