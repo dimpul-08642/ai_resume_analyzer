@@ -1,35 +1,52 @@
 import re
+from collections import Counter
 
 # ==============================
 # SKILLS DATABASE
 # ==============================
 SKILLS_DB = [
-    "python", "java", "c", "c++", "javascript",
-    "html", "css", "react", "node", "express",
-    "mongodb", "sql", "mysql",
-    "machine learning", "ai", "data science",
-    "tensorflow", "pytorch", "pandas", "numpy",
-    "git", "github", "docker", "aws",
-    "linux", "rest api", "system design"
+    "python", "java", "c", "c++", "c#", "javascript",
+    "typescript", "html", "css", "react", "angular", "vue",
+    "node.js", "node", "express", "django", "flask",
+    "sql", "postgresql", "mysql", "mongodb", "redis",
+    "rest api", "graphql", "docker", "kubernetes", "aws",
+    "azure", "gcp", "linux", "git", "github", "gitlab",
+    "ci/cd", "terraform", "ansible", "apache", "nginx",
+    "pandas", "numpy", "scikit-learn", "tensorflow", "pytorch",
+    "keras", "jupyter", "nlp", "computer vision", "machine learning",
+    "deep learning", "data science", "data analysis", "analytics",
+    "system design", "microservices", "distributed systems",
+    "security", "cloud", "unit testing", "api development",
+    "restful", "automation", "performance tuning"
 ]
 
-# ==============================
-# ✅ IMPROVED SKILL EXTRACTION
-# ==============================
+STOPWORDS = {
+    "the", "and", "for", "with", "that", "this", "from", "have",
+    "are", "will", "using", "use", "experience", "responsibilities",
+    "skills", "required", "preferred", "team", "work", "role",
+    "candidate", "job", "knowledge", "years", "year", "strong",
+    "ability", "project", "projects", "including", "based", "technical",
+    "business", "development", "support", "working", "company"
+}
+
+
+def normalize_text(text):
+    return re.sub(r"[^a-z0-9 ]", " ", text.lower())
+
+
 def extract_skills(text):
     if not text:
         return []
 
-    text = text.lower()
-    found_skills = []
+    normalized = normalize_text(text)
+    found = set()
 
     for skill in SKILLS_DB:
-        # Handle multi-word skills properly
-        pattern = r"\b" + re.escape(skill) + r"\b"
-        if re.search(pattern, text):
-            found_skills.append(skill)
+        pattern = r"\b" + re.escape(skill.lower()) + r"\b"
+        if re.search(pattern, normalized):
+            found.add(skill)
 
-    return sorted(list(set(found_skills)))
+    return sorted(found)
 
 
 # ==============================

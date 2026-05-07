@@ -4,92 +4,42 @@ from reportlab.lib import colors
 
 
 # =========================
-# ✅ SMART CLEAN SKILLS
+# ✅ CLEAN SKILLS
 # =========================
 def clean_skills(skills):
     if not skills:
         return []
 
-    # Case 1: already list → good
     if isinstance(skills, list):
         return sorted(set(skills))
 
-    # Case 2: string → FIX HERE
     if isinstance(skills, str):
-
-        # If commas exist → split by comma
         if "," in skills:
             skills = [s.strip() for s in skills.split(",")]
-
-        # Else → assume space-separated words (fallback)
         else:
-            words = skills.split()
-
-            # Try grouping known phrases
-            grouped = []
-            i = 0
-            while i < len(words):
-                if i < len(words) - 1:
-                    pair = words[i] + " " + words[i + 1]
-
-                    if pair in [
-                        "machine learning",
-                        "data science",
-                        "deep learning",
-                        "computer vision"
-                    ]:
-                        grouped.append(pair)
-                        i += 2
-                        continue
-
-                grouped.append(words[i])
-                i += 1
-
-            skills = grouped
+            skills = [skill.strip() for skill in skills.split() if skill.strip()]
 
     return sorted(set(skills))
 
 
 # =========================
-# 🎯 FORMAT TEXT
+# 📄 FORMAT HELPERS
 # =========================
 def format_skills_text(skills):
-    skills = clean_skills(skills)
+    cleaned = clean_skills(skills)
+    return ", ".join(cleaned) if cleaned else "None"
 
-    if not skills:
+
+def format_section_list(sections):
+    if not sections:
         return "None"
-
-    return ", ".join(skills)
-
-
-# =========================
-# 🤖 BETTER FEEDBACK
-# =========================
-def generate_feedback(score, missing):
-
-    if score >= 80:
-        text = "The candidate demonstrates a strong alignment with the job requirements. "
-    elif score >= 50:
-        text = "The candidate shows partial alignment with the job requirements. "
-    else:
-        text = "The candidate currently lacks several key skills required for this role. "
-
-    if missing:
-        text += "Focus on improving these areas: " + ", ".join(missing[:6]) + ". "
-
-    text += (
-        "To improve your chances, include relevant projects, highlight measurable achievements, "
-        "and tailor your resume using job-specific keywords."
-    )
-
-    return text
+    return ", ".join(sorted(sections.keys()))
 
 
 # =========================
 # 📄 MAIN REPORT
 # =========================
 def generate_report(file_path, data):
-
     try:
         doc = SimpleDocTemplate(file_path)
         styles = getSampleStyleSheet()
@@ -112,40 +62,43 @@ def generate_report(file_path, data):
         normal = ParagraphStyle(
             name="Normal",
             fontSize=11,
-            spaceAfter=10
+            spaceAfter=8
         )
 
         content = []
-
-        # TITLE
         content.append(Paragraph("AI Resume Analysis Report", title_style))
 
-        # SCORE
         score = float(data.get("score", 0))
         content.append(Paragraph(f"<b>ATS Score:</b> {score}%", heading))
 
-        # MATCHED SKILLS
-        matched = data.get("matched_skills", [])
-        matched_text = format_skills_text(matched)
+        strength = data.get("strength_score")
+        if strength is not None:
+            content.append(Paragraph(f"<b>Resume Strength:</b> {strength}%", heading))
 
         content.append(Paragraph("<b>Matched Skills</b>", heading))
-        content.append(Paragraph("✔ " + matched_text, normal))
-
-        # MISSING SKILLS
-        missing = data.get("missing_skills", [])
-        missing_text = format_skills_text(missing)
+        content.append(Paragraph("✔ " + format_skills_text(data.get("matched_skills", [])), normal))
 
         content.append(Paragraph("<b>Missing Skills</b>", heading))
-        content.append(Paragraph("✖ " + missing_text, normal))
+        content.append(Paragraph("✖ " + format_skills_text(data.get("missing_skills", [])), normal))
 
-        # FEEDBACK
-        feedback = generate_feedback(score, clean_skills(missing))
+        content.append(Paragraph("<b>Job Keywords</b>", heading))
+        content.append(Paragraph(format_skills_text(data.get("job_keywords", [])), normal))
 
-        content.append(Paragraph("<b>AI Feedback</b>", heading))
-        content.append(Paragraph(feedback, normal))
+        content.append(Paragraph("<b>Sections Detected</b>", heading))
+        content.append(Paragraph(format_section_list(data.get("sections", {})), normal))
+
+        suggestions = data.get("suggestions", [])
+        if suggestions:
+            content.append(Paragraph("<b>Recommendations</b>", heading))
+            for suggestion in suggestions:
+                content.append(Paragraph("• " + suggestion, normal))
+
+        feedback = data.get("feedback")
+        if feedback:
+            content.append(Paragraph("<b>AI Feedback</b>", heading))
+            content.append(Paragraph(feedback, normal))
 
         doc.build(content)
-
         return file_path
 
     except Exception as e:

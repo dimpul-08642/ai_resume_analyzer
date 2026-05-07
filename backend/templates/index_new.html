@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>AI Resume Analyzer</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Poppins', sans-serif;
+}
+
+body {
+    background: linear-gradient(135deg, #0f172a, #020617);
+    color: white;
+}
+
+h1 {
+    text-align: center;
+    margin-bottom: 30px;
+    font-size: 34px;
+    background: linear-gradient(90deg, #38bdf8, #6366f1);
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+}
+
+.container {
+    max-width: 1150px;
+    margin: auto;
+    padding: 30px;
+}
+
+.card {
+    background: rgba(255,255,255,0.06);
+    backdrop-filter: blur(14px);
+    border-radius: 18px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 0 30px rgba(56,189,248,0.10);
+    transition: 0.3s;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+}
+
+input, textarea {
+    width: 100%;
+    padding: 14px;
+    margin-top: 10px;
+    border-radius: 12px;
+    border: none;
+    background: #111827;
+    color: white;
+}
+
+button {
+    margin-top: 15px;
+    padding: 14px;
+    width: 100%;
+    border: none;
+    border-radius: 12px;
+    background: linear-gradient(90deg, #38bdf8, #6366f1);
+    color: white;
+    font-weight: 600;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+button:hover {
+    transform: scale(1.02);
+    box-shadow: 0 0 15px #38bdf8;
+}
+
+.grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 15px;
+}
+
+.box {
+    background: rgba(255,255,255,0.05);
+    padding: 18px;
+    border-radius: 16px;
+}
+
+.circle-wrap {
+    position: relative;
+    width: 160px;
+    height: 160px;
+    margin: auto;
+}
+
+.circle {
+    transform: rotate(-90deg);
+}
+
+.bg {
+    fill: none;
+    stroke: #1e293b;
+    stroke-width: 10;
+}
+
+.progress {
+    fill: none;
+    stroke: url(#grad);
+    stroke-width: 10;
+    stroke-dasharray: 377;
+    stroke-dashoffset: 377;
+    transition: stroke-dashoffset 1s ease;
+}
+
+.inside-circle {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 28px;
+    font-weight: bold;
+    color: #38bdf8;
+}
+
+.skill-item {
+    margin: 10px 0;
+}
+
+.bar {
+    height: 6px;
+    background: #1e293b;
+    border-radius: 5px;
+    margin-top: 5px;
+}
+
+.fill {
+    height: 6px;
+    border-radius: 5px;
+    background: linear-gradient(90deg,#38bdf8,#6366f1);
+    transition: width 0.6s ease;
+}
+
+#radarChart {
+    width: 100%;
+    height: 360px !important;
+    min-height: 360px !important;
+    display: block;
+}
+
+#loader {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.85);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: 0.3s;
+}
+
+#loader.active {
+    opacity: 1;
+    pointer-events: all;
+}
+
+.spinner {
+    width: 60px;
+    height: 60px;
+    border: 6px solid #1e293b;
+    border-top: 6px solid #38bdf8;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    100% {transform: rotate(360deg);}
+}
+
+ul {
+    margin-top: 10px;
+    padding-left: 18px;
+}
+
+li {
+    margin-bottom: 10px;
+    line-height: 1.5;
+}
+
+.small-text {
+    color: #cbd5f5;
+    font-size: 14px;
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<h1>AI Resume Analyzer</h1>
+
+<div class="card">
+    <input type="file" id="resume">
+    <textarea id="job_desc" rows="5" placeholder="Paste Job Description..."></textarea>
+    <button onclick="analyzeResume()">Analyze Resume</button>
+</div>
+
+<div class="grid">
+    <div class="card">
+        <div class="circle-wrap">
+            <svg class="circle" width="160" height="160">
+                <defs>
+                    <linearGradient id="grad">
+                        <stop offset="0%" stop-color="#38bdf8"/>
+                        <stop offset="100%" stop-color="#6366f1"/>
+                    </linearGradient>
+                </defs>
+                <circle cx="80" cy="80" r="60" class="bg"></circle>
+                <circle cx="80" cy="80" r="60" class="progress" id="progressCircle"></circle>
+            </svg>
+            <div class="inside-circle">
+                <span id="score">0</span>%
+            </div>
+        </div>
+        <p class="small-text" style="text-align:center; margin-top:12px;">ATS Match</p>
+    </div>
+    <div class="card" style="display:flex; flex-direction:column; justify-content:center; align-items:center;">
+        <h2 style="font-size:24px; text-align:center; margin-bottom:15px;">Strength</h2>
+        <div style="font-size:42px; font-weight:700; color:#38bdf8;"> <span id="strengthScore">0</span>% </div>
+        <p class="small-text">Overall resume structure and keyword strength.</p>
+    </div>
+</div>
+
+<div class="grid">
+    <div class="box">
+        <h3>Matched Skills</h3>
+        <div id="matched"></div>
+    </div>
+    <div class="box">
+        <h3>Missing Skills</h3>
+        <div id="missing"></div>
+    </div>
+</div>
+
+<div class="grid">
+    <div class="box">
+        <h3>Job Keywords</h3>
+        <div id="jobKeywords"></div>
+    </div>
+    <div class="box">
+        <h3>Resume Sections</h3>
+        <div id="resumeSections"></div>
+    </div>
+</div>
+
+<div class="card">
+    <h3>Recommendations</h3>
+    <ul id="suggestions"></ul>
+</div>
+
+<div class="card">
+    <h3>Skill Comparison</h3>
+    <canvas id="radarChart"></canvas>
+</div>
+
+<div class="card">
+    <button onclick="downloadReport()">Download Report</button>
+</div>
+
+</div>
+
+<div id="loader">
+    <div class="spinner"></div>
+</div>
+
+<script>
+window.latestAnalysis = null;
+
+function showLoader(show) {
+    const loader = document.getElementById("loader");
+    loader.classList.toggle("active", show);
+}
+
+function renderSkills(skills, containerId) {
+    const container = document.getElementById(containerId);
+    container.innerHTML = "";
+
+    if (!skills || !skills.length) {
+        container.innerHTML = "<small>None</small>";
+        return;
+    }
+
+    skills.forEach((skill, i) => {
+        const width = 70 + (i % 3) * 10;
+        container.innerHTML += `
+            <div class="skill-item">
+                <small>${skill}</small>
+                <div class="bar">
+                    <div class="fill" style="width:${width}%"></div>
+                </div>
+            </div>
+        `;
+    });
+}
+
+function renderList(items, containerId, emptyText = "None") {
+    const container = document.getElementById(containerId);
+    container.innerHTML = "";
+
+    if (!items || !items.length) {
+        container.innerHTML = `<small>${emptyText}</small>`;
+        return;
+    }
+
+    if (container.tagName === "UL") {
+        items.forEach(item => {
+            const li = document.createElement("li");
+            li.innerText = item;
+            container.appendChild(li);
+        });
+        return;
+    }
+
+    items.forEach(item => {
+        container.innerHTML += `<div class="skill-item"><small>${item}</small></div>`;
+    });
+}
+
+function renderSections(sections) {
+    const container = document.getElementById("resumeSections");
+    container.innerHTML = "";
+    const sectionNames = Object.keys(sections || {});
+
+    if (!sectionNames.length) {
+        container.innerHTML = "<small>None</small>";
+        return;
+    }
+
+    container.innerHTML = sectionNames.map(name => `<div class="skill-item"><small>${name}</small></div>`).join("");
+}
+
+async function analyzeResume() {
+    const file = document.getElementById("resume").files[0];
+    const job_desc = document.getElementById("job_desc").value;
+
+    if (!file) return alert("Upload resume");
+    if (!job_desc.trim()) return alert("Enter job description");
+
+    const formData = new FormData();
+    formData.append("resume", file);
+    formData.append("job_desc", job_desc);
+
+    showLoader(true);
+
+    const response = await fetch("/analyze", {
+        method: "POST",
+        body: formData
+    });
+
+    const data = await response.json();
+    showLoader(false);
+
+    if (data.error) {
+        return alert(data.error);
+    }
+
+    window.latestAnalysis = data;
+    const score = data.score || 0;
+    const strength = data.strength_score || 0;
+
+    document.getElementById("score").innerText = score;
+    document.getElementById("strengthScore").innerText = strength;
+    document.getElementById("progressCircle").style.strokeDashoffset = 377 - (377 * score) / 100;
+
+    renderSkills(data.matched_skills || [], "matched");
+    renderSkills(data.missing_skills || [], "missing");
+    renderList(data.job_keywords || [], "jobKeywords", "None");
+    renderSections(data.sections || {});
+    renderList(data.suggestions || [], "suggestions", "No recommendations available.");
+    renderChart(data.chart || null);
+}
+
+function renderChart(chartData) {
+    const ctx = document.getElementById("radarChart").getContext("2d");
+    if (window.skillChart) {
+        window.skillChart.destroy();
+    }
+
+    if (!chartData || !chartData.labels || !chartData.labels.length) {
+        ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+        return;
+    }
+
+    window.skillChart = new Chart(ctx, {
+        type: "radar",
+        data: {
+            labels: chartData.labels,
+            datasets: [
+                {
+                    label: "Resume",
+                    data: chartData.resume,
+                    borderColor: "#38bdf8",
+                    backgroundColor: "rgba(56,189,248,0.2)",
+                    pointBackgroundColor: "#38bdf8",
+                    pointBorderColor: "#38bdf8"
+                },
+                {
+                    label: "Job",
+                    data: chartData.job,
+                    borderColor: "#ef4444",
+                    backgroundColor: "rgba(239,68,68,0.2)",
+                    pointBackgroundColor: "#ef4444",
+                    pointBorderColor: "#ef4444"
+                }
+            ]
+        },
+        options: {
+            scales: {
+                r: {
+                    beginAtZero: true,
+                    suggestedMax: 1,
+                    grid: { color: "rgba(255,255,255,0.15)" },
+                    angleLines: { color: "rgba(255,255,255,0.15)" },
+                    pointLabels: { color: "#cbd5f5" },
+                    ticks: { color: "#cbd5f5", backdropColor: "rgba(0,0,0,0)" }
+                }
+            },
+            plugins: {
+                legend: { labels: { color: "white" } }
+            },
+            responsive: true,
+            maintainAspectRatio: false
+        }
+    });
+}
+
+async function downloadReport() {
+    if (!window.latestAnalysis) {
+        return alert("Run an analysis first before downloading the report.");
+    }
+
+    const response = await fetch("/download-report", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify(window.latestAnalysis)
+    });
+
+    if (!response.ok) {
+        const error = await response.json();
+        return alert(error.error || "Report download failed.");
+    }
+
+    const blob = await response.blob();
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = "AI_Resume_Report.pdf";
+    link.click();
+}
+</script>
+
+</body>
+</html>

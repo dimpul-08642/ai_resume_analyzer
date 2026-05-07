@@ -1,13 +1,19 @@
 from flask import Flask, request, jsonify, send_file, render_template
 import os
+import re
 import traceback
 from werkzeug.utils import secure_filename
 
-from resume_parser import extract_text_from_pdf, extract_text_from_docx
-from analyzer import extract_skills
+from resume_parser import extract_text_from_pdf, extract_text_from_docx, parse_resume_sections
+from advanced_analyzer import (
+    extract_skills,
+    extract_job_keywords,
+    generate_suggestions,
+    calculate_resume_strength
+)
 from report_generator import generate_report
 
-app = Flask(__name__, template_folder="../templates")
+app = Flask(__name__, template_folder="templates")
 
 # =========================
 # 📁 CONFIG
@@ -31,7 +37,7 @@ def allowed_file(filename):
 # =========================
 @app.route("/")
 def home():
-    return render_template("index.html")
+    return render_template("index_new.html")
 
 
 # =========================
@@ -73,15 +79,26 @@ def get_ai_feedback(resume_text, job_desc, resume_skills, job_skills):
 # =========================
 # 📊 RADAR CHART DATA
 # =========================
-def generate_skill_chart_data(resume_skills, job_skills):
+def generate_skill_chart_data(resume_text, resume_skills, job_skills, job_keywords):
+    labels = []
+    for item in job_skills + job_keywords + resume_skills:
+        if item not in labels:
+            labels.append(item)
+        if len(labels) >= 10:
+            break
 
-    all_skills = list(set(resume_skills + job_skills))[:8]
-
-    resume_values = [1 if skill in resume_skills else 0 for skill in all_skills]
-    job_values = [1 if skill in job_skills else 0 for skill in all_skills]
+    resume_text_lower = resume_text.lower()
+    resume_values = [
+        1 if skill in resume_skills or re.search(r"\b" + re.escape(skill.lower()) + r"\b", resume_text_lower) else 0
+        for skill in labels
+    ]
+    job_values = [
+        1 if skill in job_skills or skill in job_keywords else 0
+        for skill in labels
+    ]
 
     return {
-        "labels": all_skills,
+        "labels": labels,
         "resume": resume_values,
         "job": job_values
     }
@@ -122,28 +139,42 @@ def analyze():
             text = extract_text_from_docx(file_path)
 
         # =========================
+        # 📄 Parse Resume Structure
+        # =========================
+        resume_data = parse_resume_sections(text)
+        resume_sections = resume_data.get("sections", {})
+
+        # =========================
         # 🧠 Extract Skills
         # =========================
         resume_skills = extract_skills(text)
-        job_skills = extract_skills(job_desc.lower())
+        job_skills = extract_skills(job_desc)
+        job_keywords = extract_job_keywords(job_desc)
 
         # =========================
-        # 🤖 FEEDBACK
+        # 🤖 Score + Suggestions
         # =========================
-        result = get_ai_feedback(
-            text, job_desc, resume_skills, job_skills
-        )
+        matched = sorted(list(set(resume_skills) & set(job_skills)))
+        missing = sorted(list(set(job_skills) - set(resume_skills)))
+        strength_score = calculate_resume_strength(text, matched, missing, resume_sections)
+        suggestions = generate_suggestions(text, resume_skills, job_skills, resume_sections)
 
-        # =========================
-        # 📊 CHART DATA
-        # =========================
-        result["chart"] = generate_skill_chart_data(
-            resume_skills, job_skills
-        )
+        result = {
+            "score": round((len(matched) / len(job_skills) * 100) if job_skills else 0, 2),
+            "strength_score": strength_score,
+            "matched_skills": matched,
+            "missing_skills": missing,
+            "job_keywords": job_keywords,
+            "sections": resume_sections,
+            "suggestions": suggestions,
+            "feedback": (
+                "Your resume score reflects skill alignment and structure. "
+                "Use the recommendations below to add stronger achievements, keywords, and sections."
+            )
+        }
 
-        # =========================
-        # 📤 RESPONSE
-        # =========================
+        result["chart"] = generate_skill_chart_data(text, resume_skills, job_skills, job_keywords)
+
         return jsonify(result)
 
     except Exception as e:
