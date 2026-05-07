@@ -5,4 +5,4 @@ services:
     plan: free
     branch: main
     autoDeploy: true
-    startCommand: cd backend && gunicorn app:app
+    startCommand: gunicorn backend.app:app
