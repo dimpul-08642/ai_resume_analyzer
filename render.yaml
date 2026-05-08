@@ -5,4 +5,4 @@ services:
     plan: free
     branch: main
     autoDeploy: true
-    startCommand: gunicorn backend.app:app
+    startCommand: gunicorn backend.app:app --bind 0.0.0.0:$PORT

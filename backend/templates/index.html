@@ -248,6 +248,7 @@ button:hover {
 
 <div class="card">
     <button onclick="downloadReport()">Download Report</button>
+    <button onclick="copyResults()" style="background: linear-gradient(90deg, #34d399, #10b981);">Copy Results</button>
 </div>
 
 </div>
@@ -381,6 +382,28 @@ async function downloadReport() {
     link.href = URL.createObjectURL(blob);
     link.download = "AI_Resume_Report.pdf";
     link.click();
+}
+
+async function copyResults() {
+    let score = document.getElementById("score").innerText;
+    let matched = [...document.querySelectorAll("#matched small")].map(e => e.innerText);
+    let missing = [...document.querySelectorAll("#missing small")].map(e => e.innerText);
+    let feedback = document.getElementById("feedback").innerText;
+
+    let text = `Score: ${score}%\nMatched Skills: ${matched.length ? matched.join(", ") : "None"}\nMissing Skills: ${missing.length ? missing.join(", ") : "None"}\nFeedback: ${feedback}`;
+
+    try {
+        await navigator.clipboard.writeText(text);
+        alert("Analysis results copied to clipboard.");
+    } catch (error) {
+        let textarea = document.createElement("textarea");
+        textarea.value = text;
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand("copy");
+        document.body.removeChild(textarea);
+        alert("Analysis results copied to clipboard.");
+    }
 }
 
 </script>

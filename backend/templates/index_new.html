@@ -267,7 +267,9 @@ li {
 
 <div class="card">
     <h3>Skill Comparison</h3>
+    <p class="small-text">Each skill below shows whether it appears in your resume and whether it is required by the job description. Green = present, red = missing.</p>
     <canvas id="radarChart"></canvas>
+    <div id="comparisonSummary" style="margin-top:18px;"></div>
 </div>
 
 <div class="card">
@@ -395,6 +397,7 @@ function renderChart(chartData) {
 
     if (!chartData || !chartData.labels || !chartData.labels.length) {
         ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+        renderComparisonSummary(null);
         return;
     }
 
@@ -439,6 +442,35 @@ function renderChart(chartData) {
             maintainAspectRatio: false
         }
     });
+
+    renderComparisonSummary(chartData);
+}
+
+function renderComparisonSummary(chartData) {
+    const container = document.getElementById("comparisonSummary");
+    container.innerHTML = "";
+
+    if (!chartData || !chartData.labels.length) {
+        container.innerHTML = "<small>No comparison data available yet.</small>";
+        return;
+    }
+
+    const rows = chartData.labels.map((label, index) => {
+        const resumePresent = chartData.resume[index] ? "Present" : "Missing";
+        const jobPresent = chartData.job[index] ? "Required" : "Not required";
+        const resumeColor = chartData.resume[index] ? "#34d399" : "#f87171";
+        const jobColor = chartData.job[index] ? "#34d399" : "#f87171";
+
+        return `
+            <div style="display:flex; justify-content:space-between; gap:10px; margin:8px 0; padding:10px; border-radius:12px; background: rgba(255,255,255,0.04);">
+                <span>${label}</span>
+                <span style="color:${resumeColor};">Resume: ${resumePresent}</span>
+                <span style="color:${jobColor};">Job: ${jobPresent}</span>
+            </div>
+        `;
+    }).join("");
+
+    container.innerHTML = rows;
 }
 
 async function downloadReport() {
